@@ -1,0 +1,18 @@
+{
+    "optimizer": "Adam", 
+    "batch_size": 256, 
+    "lr": 0.0001,
+    "wd": 0,
+    "hidden_dim":256                                                                                                                                                                                                            ,
+    "dataset": "Multi-MNIST",
+    "path": "/Code/Hyper_trans/MTL/dataset/Multi_task/MultiMNIST/multi_mnist.pickle",
+    "num_tasks": 2,
+    "solver": "ls",
+    "model_type":"trans_relu", 
+    "alpha": 0.2,
+    "epochs": 150,
+    "num_ray_eval": 25,
+    "val_size": 0.1,
+    "tasks": ["L","R"],
+    "early_stop": 25
+}

@@ -1,0 +1,19 @@
+{
+    "optimizer": "Adam", 
+    "batch_size": 512,
+    "lr": 0.0005,
+    "wd": 0,
+    "hidden_dim": 100,
+    "dataset": "celeba",
+    "path": "/Code/Hyper_trans/MTL/dataset/Multi_task/CelebA",
+    "tasks": ["1", "2", "3", "6", "7", "11", "25", "27", "32", "33"],
+    "solver": "ls",
+    "model_type": "trans_relu",
+    "alpha": 0.2,
+    "epochs": 100,
+    "num_eval":100,
+    "backbone": "resnet18",
+    "seed": 42,
+    "num_tasks": 10,
+    "early_stop": 7
+}
