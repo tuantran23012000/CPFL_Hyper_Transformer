@@ -4,6 +4,8 @@ import torch
 import numpy as np
 from tools.hv import HvMaximization
 from tools.min_norm_solvers_numpy import MinNormSolver
+import matplotlib
+matplotlib.use('Agg')  # 设置非交互式后端
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 from matplotlib.animation import FuncAnimation
@@ -14,7 +16,6 @@ import itertools
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.patches import FancyArrowPatch
 from mpl_toolkits.mplot3d import proj3d
-import matplotlib
 class Arrow3D(FancyArrowPatch):
     def __init__(self, xs, ys, zs, *args, **kwargs):
         FancyArrowPatch.__init__(self, (0,0), (0,0), *args, **kwargs)
@@ -451,13 +452,15 @@ def vis_2d(cfg,targets_epo, results1, contexts,pb,pf,criterion,igd,med,c,model_t
     plt.title("MED: {0:4f} ".format(np.mean(np.array(meds))),fontsize=30)
     #ax.set_title("MED :{0:4f}".format(med),fontsize=20)
     plt.tight_layout()
-    # plt.savefig("./infer_results/"+str(name)+"_"+str(criterion)+"_"+str(mode)+".png")
-    # if join_input:
-    #     plt.savefig("./out/"+str(name)+"_hyper_"+model_type+"_w_joint.pdf")
-    # else:
-    #     plt.savefig("./out/"+str(name)+"_hyper_"+model_type+"_wo_joint.pdf")
-
-    plt.show()
+    
+    # 创建输出目录
+    import os
+    os.makedirs('./visualizations', exist_ok=True)
+    
+    # 保存图片而不是显示
+    plt.savefig("./visualizations/"+str(name)+"_"+str(criterion)+"_"+str(mode)+"_"+str(model_type)+".png", dpi=300, bbox_inches='tight')
+    print(f"可视化图表已保存到: ./visualizations/{name}_{criterion}_{mode}_{model_type}.png")
+    plt.close()  # 关闭图形以释放内存
 def visualize_predict_2d(cfg,targets_epo, results1, contexts,pb,pf,criterion,igd,med,c,model_type,join_input):
     mode = cfg['MODE']
     name = cfg['NAME']
@@ -509,13 +512,15 @@ def visualize_predict_2d(cfg,targets_epo, results1, contexts,pb,pf,criterion,igd
     ax.legend(fontsize=15)
     plt.title("MED: "+str(med),fontsize=30)
     plt.tight_layout()
-    # plt.savefig("./infer_results/"+str(name)+"_"+str(criterion)+"_"+str(mode)+".png")
-    # if join_input:
-    #     plt.savefig("./out/"+str(name)+"_hyper_"+model_type+"_w_joint.pdf")
-    # else:
-    #     plt.savefig("./out/"+str(name)+"_hyper_"+model_type+"_wo_joint.pdf")
-
-    plt.show()
+    
+    # 创建输出目录
+    import os
+    os.makedirs('./visualizations', exist_ok=True)
+    
+    # 保存图片而不是显示
+    plt.savefig("./visualizations/"+str(name)+"_"+str(criterion)+"_"+str(mode)+"_single_viz.png", dpi=300, bbox_inches='tight')
+    print(f"单独可视化图表已保存到: ./visualizations/{name}_{criterion}_{mode}_single_viz.png")
+    plt.close()  # 关闭图形以释放内存
 
 def concat_2d(cfg,targets_epo, results1, contexts,pb,pf,criterion,igd,med,c):
     model_types = ['mlp','trans']

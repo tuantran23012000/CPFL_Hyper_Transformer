@@ -282,11 +282,30 @@ def predict_result(device, cfg, criterion, pb, pf, model_type):
 
             #contexts = np.array(tmp)
             
-            # 保存结果数据（注释状态）
-            # np.save('./predict/target_'+str(cfg["NAME"])+"_"+ str(model_type)+"_"+str(c_[0])+"_"+str(c_[1])+'.npy',targets_epo)
-            # np.save('./predict/predict_'+str(cfg["NAME"])+"_"+ str(model_type)+"_"+str(c_[0])+"_"+str(c_[1])+'.npy',results1)
-            # np.save('./predict/med_'+str(cfg["NAME"])+"_"+ str(model_type)+"_"+str(c_[0])+"_"+str(c_[1])+'.npy',med)
-            # #np.save('./predict/ray_'+str(cfg["NAME"])+"_"+ str(model_type)+"_"+str(c_[0])+"_"+str(c_[1])+'.npy',contexts)
+            # 创建predict目录（如果不存在）
+            os.makedirs('./predict', exist_ok=True)
+            
+            # 保存结果数据
+            np.save('./predict/target_'+str(cfg["NAME"])+"_"+ str(model_type)+"_"+str(c_[0])+"_"+str(c_[1])+'.npy',targets_epo)
+            np.save('./predict/predict_'+str(cfg["NAME"])+"_"+ str(model_type)+"_"+str(c_[0])+"_"+str(c_[1])+'.npy',results1)
+            np.save('./predict/med_'+str(cfg["NAME"])+"_"+ str(model_type)+"_"+str(c_[0])+"_"+str(c_[1])+'.npy',med)
+            
+            # 重新生成偏好向量用于保存
+            tmp_save = []
+            for i in range(10):
+                if n_tasks == 2:
+                    u1 = random.uniform(c_[0], 1)
+                    u2 = random.uniform(c_[1], 1)
+                    u = np.array([u1,u2])
+                else:
+                    u1 = random.uniform(c_[0], 1)
+                    u2 = random.uniform(c_[1], 1)
+                    u3 = random.uniform(c_[2], 1)
+                    u = np.array([u1,u2,u3])
+                r = u/np.linalg.norm(u,1)
+                tmp_save.append(r)
+            contexts_save = np.array(tmp_save)
+            np.save('./predict/ray_'+str(cfg["NAME"])+"_"+ str(model_type)+"_"+str(c_[0])+"_"+str(c_[1])+'.npy',contexts_save)
             meds_se.append(np.mean(np.array(meds_c).tolist()))
     print("Mean: ",np.mean(np.array(meds_se)))
     print("Std: ",np.std(np.array(meds_se)))

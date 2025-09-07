@@ -17,6 +17,9 @@ from problems.get_problem import Problem
 from pymoo.indicators.hv import HV
 import yaml
 from predict import predict_result
+import sys
+sys.path.append('../Connected_PF')
+from ..Connected_PF.tools.scalarization_function import CS_functions, EPOSolver
 
 
 def sample_config(search_space_dict, reset_random_seed=False, seed=0):
@@ -120,7 +123,65 @@ def train_epoch(device, cfg, criterion, pb,pf,join_input):
         for i in range(len(objectives)):
             obj_values.append(objectives[i])
         losses = torch.stack(obj_values)
-        loss = max(torch.abs(losses-c) * ray)
+        
+        # 根据solver类型选择相应的标量化函数计算损失
+        CS_func = CS_functions(losses, ray)
+        
+        if criterion == 'LS':
+            # 线性标量化
+            loss = CS_func.linear_function()
+        elif criterion == 'KL':
+            # KL散度标量化
+            loss = CS_func.KL_function()
+        elif criterion == 'Cheby':
+            # 切比雪夫标量化（带约束）
+            loss = CS_func.chebyshev_function(c)
+        elif criterion == 'Utility':
+            # 效用函数标量化 - 需要从配置中获取Ub参数
+            ub = cfg['TRAIN']['Solver'][criterion]['Ub'] if 'Ub' in cfg['TRAIN']['Solver'][criterion] else 8
+            loss = CS_func.utility_function(ub)
+        elif criterion == 'Cosine':
+            # 余弦相似度标量化
+            loss = CS_func.cosine_function()
+        elif criterion == 'Cauchy':
+            # 柯西-施瓦茨标量化
+            loss = CS_func.cauchy_schwarz_function()
+        elif criterion == 'Prod':
+            # 乘积标量化
+            loss = CS_func.product_function()
+        elif criterion == 'Log':
+            # 对数标量化
+            loss = CS_func.log_function()
+        elif criterion == 'AC':
+            # 增强切比雪夫标量化
+            rho = cfg['TRAIN']['Solver'][criterion]['Rho'] if 'Rho' in cfg['TRAIN']['Solver'][criterion] else 0.1
+            loss = CS_func.ac_function(rho)
+        elif criterion == 'MC':
+            # 修改切比雪夫标量化
+            rho = cfg['TRAIN']['Solver'][criterion]['Rho'] if 'Rho' in cfg['TRAIN']['Solver'][criterion] else 0.1
+            loss = CS_func.mc_function(rho)
+        elif criterion == 'HV':
+            # 超体积标量化
+            rho = cfg['TRAIN']['Solver'][criterion]['Rho'] if 'Rho' in cfg['TRAIN']['Solver'][criterion] else 100
+            dynamic_weight = ray
+            loss = CS_func.hv_function(dynamic_weight, rho)
+        elif criterion == 'EPO':
+            # EPO需要特殊处理，使用EPOSolver
+            n_params = sum(p.numel() for p in hnet.parameters() if p.requires_grad)
+            epo_solver = EPOSolver(n_tasks=n_tasks, n_params=n_params)
+            loss = epo_solver.get_weighted_loss(losses, ray, list(hnet.parameters()))
+        elif criterion == 'CPMTL':
+            # CPMTL使用线性标量化作为fallback
+            loss = CS_func.linear_function()
+        elif criterion == 'HVI':
+            # HVI (Hypervolume Indicator)
+            rho = cfg['TRAIN']['Solver'][criterion]['Rho'] if 'Rho' in cfg['TRAIN']['Solver'][criterion] else 200
+            dynamic_weight = ray
+            loss = CS_func.hv_function(dynamic_weight, rho)
+        else:
+            # 默认使用原来的简化切比雪夫标量化
+            print(f"警告: 未识别的solver类型 {criterion}，使用默认的切比雪夫标量化")
+            loss = max(torch.abs(losses-c) * ray)
         loss.backward()
 
         optimizer.step()
