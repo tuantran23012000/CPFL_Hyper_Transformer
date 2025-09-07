@@ -1,26 +1,94 @@
+"""
+标量化函数模块
+==============
+
+该模块实现了多目标优化中常用的标量化函数，用于将多目标问题转换为单目标问题。
+
+支持的标量化函数：
+1. Linear Scalarization (LS): 线性标量化
+2. Chebyshev Scalarization: 切比雪夫标量化  
+3. KL Divergence: KL散度
+4. Cosine Similarity: 余弦相似度
+5. Utility Function: 效用函数
+6. Product Function: 乘积函数
+7. Augmented Chebyshev (AC): 增强切比雪夫
+8. Modified Chebyshev (MC): 修改切比雪夫
+9. Hypervolume (HV): 超体积
+10. Cauchy-Schwarz: 柯西-施瓦茨
+
+这些函数将多个目标函数值组合成单一标量值，用于训练超网络。
+"""
+
 import torch
 from tools.min_norm_solvers_numpy import MinNormSolver
 import numpy as np
+
+
 class CS_functions():
-    def __init__(self,losses,ray):
+    """
+    标量化函数集合类
+    
+    该类封装了各种标量化函数，用于将多目标函数值转换为单一标量值。
+    每个函数都接收目标函数值向量和偏好向量作为输入。
+    """
+    
+    def __init__(self, losses, ray):
+        """
+        初始化标量化函数
+        
+        Args:
+            losses (torch.Tensor): 目标函数值向量
+            ray (torch.Tensor): 偏好向量（权重向量）
+        """
         super().__init__()
-        self.losses = losses
-        self.ray = ray
+        self.losses = losses  # 目标函数值
+        self.ray = ray        # 偏好向量
+    
     def linear_function(self):
+        """
+        线性标量化函数: f(x) = Σ(w_i * f_i(x))
+        
+        Returns:
+            torch.Tensor: 标量化后的值
+        """
         ls = (self.losses * self.ray).sum()
         return ls
 
     def log_function(self):
-        return (self.ray*torch.log(self.losses+1)).sum()
+        """
+        对数标量化函数: f(x) = Σ(w_i * log(f_i(x) + 1))
+        
+        Returns:
+            torch.Tensor: 标量化后的值
+        """
+        return (self.ray * torch.log(self.losses + 1)).sum()
 
-    def ac_function(self,rho):
-        ls = (self.losses * self.ray).sum()
-        cheby = max(self.losses * self.ray)
-        return cheby + rho*ls
+    def ac_function(self, rho):
+        """
+        增强切比雪夫函数: f(x) = max(w_i * f_i(x)) + rho * Σ(w_i * f_i(x))
+        
+        Args:
+            rho (float): 增强参数
+            
+        Returns:
+            torch.Tensor: 标量化后的值
+        """
+        ls = (self.losses * self.ray).sum()          # 线性项
+        cheby = max(self.losses * self.ray)          # 切比雪夫项
+        return cheby + rho * ls
 
-    def mc_function(self,rho):
+    def mc_function(self, rho):
+        """
+        修改切比雪夫函数: f(x) = max(w_i * f_i(x) + rho * Σ(w_j * f_j(x)))
+        
+        Args:
+            rho (float): 修改参数
+            
+        Returns:
+            torch.Tensor: 标量化后的值
+        """
         ls = (self.losses * self.ray).sum()
-        cheby = max(self.losses * self.ray + rho*ls)
+        cheby = max(self.losses * self.ray + rho * ls)
         return cheby
     
     def hv_function(self,dynamic_weight,rho):
@@ -46,15 +114,29 @@ class CS_functions():
         U = 1/torch.prod((ub - self.losses)**self.ray)
         return U
 
-    def chebyshev_function(self,c):
-        lower_bound = c
-        #lower_bound = torch.tensor([0.3,0.2])
-        #lower_bound = torch.tensor([0.0,0.0])
-        # print(self.losses)
-        # print(lower_bound)
-        # print((self.losses-lower_bound))
-        cheby = max((self.losses-lower_bound) * self.ray)
-        #print(cheby)
+    def chebyshev_function(self, c):
+        """
+        切比雪夫标量化函数（带下界约束）
+        
+        这是项目中使用的核心标量化函数，公式为：
+        f(x) = max(w_i * (f_i(x) - c_i))
+        
+        其中 c_i 是第i个目标的下界约束，用于限制搜索区域。
+        
+        Args:
+            c (torch.Tensor or list): 下界约束向量
+            
+        Returns:
+            torch.Tensor: 标量化后的值
+        """
+        lower_bound = c  # 下界约束
+        
+        # 计算约束后的切比雪夫距离
+        # (losses - lower_bound) 确保解满足约束条件
+        # 乘以权重向量 ray 体现偏好
+        # 取最大值是切比雪夫距离的特征
+        cheby = max((self.losses - lower_bound) * self.ray)
+        
         return cheby
 
     def KL_function(self):
